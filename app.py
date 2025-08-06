@@ -10,20 +10,27 @@ st.set_page_config(page_title="📁 File Uploader with Duplicate Detection")
 st.title("📂 Upload File with Duplicate Detection")
 st.write("This app checks if the uploaded file is a duplicate using content hash (SHA-256).")
 
-uploaded_file = st.file_uploader("Choose a file to upload", type=None)
+uploaded_files = st.file_uploader("Choose files to upload", type=None, accept_multiple_files=True)
 
-if uploaded_file:
+if uploaded_files:
     if st.button("🚀 Upload"):
         with st.spinner("Uploading..."):
             try:
-                files = {"file": (uploaded_file.name, uploaded_file, uploaded_file.type)}
+                files = [("file", (f.name, f, f.type)) for f in uploaded_files]
                 response = requests.post(API_URL, files=files)
 
                 if response.status_code == 200:
-                    st.success(response.json().get("message", "✅ File uploaded successfully."))
+                    resp_json = response.json()
+                    if "results" in resp_json:
+                        for result in resp_json["results"]:
+                            if result["status"] == "uploaded":
+                                st.success(f"{result['filename']}: {result['message']}")
+                            elif result["status"] == "duplicate":
+                                st.warning(f"{result['filename']}: {result['message']}")
+                    else:
+                        st.success(resp_json.get("message", "✅ Files uploaded successfully."))
                 else:
                     st.warning(response.json().get("detail", "⚠️ Something went wrong."))
-
             except requests.exceptions.ConnectionError:
                 st.error("❌ Could not connect to FastAPI backend. Make sure the server is running.")
 

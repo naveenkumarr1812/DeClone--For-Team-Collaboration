@@ -10,37 +10,30 @@ app = FastAPI()
 UPLOAD_DIR = "uploads"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
+from typing import List
+
 @app.post("/upload")
-async def upload_file(file: UploadFile = File(...)):
-    # Read file contents
-    contents = await file.read()
-    file.file.seek(0)
-
-    # Generate SHA-256 hash
-    hash_value = generate_file_hash(file.file)
-
-    # Connect to database
+async def upload_files(file: List[UploadFile] = File(...)):
     db = SessionLocal()
+    results = []
     try:
-        # Check if hash already exists in database
-        existing = db.query(FileHash).filter_by(hash=hash_value).first()
-        if existing:
-            raise HTTPException(status_code=400, detail="⚠️ This file already exists.")
-
-        # Safely create a unique filename
-        original_filename = file.filename or "uploaded_file"
-        safe_filename = f"{uuid.uuid4().hex}_{original_filename}"
-        save_path = os.path.join(UPLOAD_DIR, safe_filename)
-
-        # Save file
-        with open(save_path, "wb") as f:
-            f.write(contents)
-
-        # Save hash and filename to database
-        db.add(FileHash(hash=hash_value, filename=original_filename))
-        db.commit()
-
-        return {"message": "✅ File uploaded successfully."}
+        for f in file:
+            contents = await f.read()
+            f.file.seek(0)
+            hash_value = generate_file_hash(f.file)
+            existing = db.query(FileHash).filter_by(hash=hash_value).first()
+            if existing:
+                results.append({"filename": f.filename, "status": "duplicate", "message": "⚠️ File already exists."})
+                continue
+            original_filename = f.filename or "uploaded_file"
+            safe_filename = f"{uuid.uuid4().hex}_{original_filename}"
+            save_path = os.path.join(UPLOAD_DIR, safe_filename)
+            with open(save_path, "wb") as out_f:
+                out_f.write(contents)
+            db.add(FileHash(hash=hash_value, filename=original_filename))
+            db.commit()
+            results.append({"filename": original_filename, "status": "uploaded", "message": "✅ Uploaded successfully."})
+        return {"results": results}
     finally:
         db.close()
 
