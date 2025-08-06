@@ -2,21 +2,28 @@ import streamlit as st
 import requests
 from db import SessionLocal, FileHash
 
-# FastAPI backend URL
+# Backend API endpoint
 API_URL = "http://localhost:8000/upload"
 
-st.set_page_config(page_title="📁 File Uploader with Duplicate Detection")
+# Page configuration
+st.set_page_config(page_title="🔐DupliDrop")
+st.title("🔐DupliDrop")
+st.write("This app checks if the uploaded files are duplicates using SHA-256 content hashing.")
 
-st.title("📂 Upload File with Duplicate Detection")
-st.write("This app checks if the uploaded file is a duplicate using content hash (SHA-256).")
-
+# File uploader widget
 uploaded_files = st.file_uploader("Choose files to upload", type=None, accept_multiple_files=True)
 
+# Upload button logic
 if uploaded_files:
     if st.button("🚀 Upload"):
         with st.spinner("Uploading..."):
             try:
-                files = [("file", (f.name, f, f.type)) for f in uploaded_files]
+                files = []
+                for f in uploaded_files:
+                    file_bytes = f.read()
+                    files.append(("file", (f.name, file_bytes, f.type)))
+                    f.seek(0)
+
                 response = requests.post(API_URL, files=files)
 
                 if response.status_code == 200:
@@ -24,38 +31,44 @@ if uploaded_files:
                     if "results" in resp_json:
                         for result in resp_json["results"]:
                             if result["status"] == "uploaded":
-                                st.success(f"{result['filename']}: {result['message']}")
+                                st.success(f"✅ {result['filename']}: {result['message']}")
                             elif result["status"] == "duplicate":
-                                st.warning(f"{result['filename']}: {result['message']}")
+                                st.warning(f"⚠️ {result['filename']}: {result['message']}")
                     else:
                         st.success(resp_json.get("message", "✅ Files uploaded successfully."))
                 else:
-                    st.warning(response.json().get("detail", "⚠️ Something went wrong."))
+                    # Safe handling of non-JSON error responses
+                    try:
+                        error_detail = response.json().get("detail", "⚠️ Something went wrong.")
+                    except ValueError:
+                        error_detail = f"⚠️ Server returned status {response.status_code}: {response.text}"
+                    st.warning(error_detail)
             except requests.exceptions.ConnectionError:
                 st.error("❌ Could not connect to FastAPI backend. Make sure the server is running.")
 
-# Show all file hashes from the database
+# Display all file hashes directly (no dropdown)
 st.subheader("🗂️ Files in Database")
 try:
     db = SessionLocal()
     file_hashes = db.query(FileHash).all()
     if file_hashes:
-        header_cols = st.columns([4, 6, 1])
-        header_cols[0].markdown("**File Name**")
-        header_cols[1].markdown("**Hash**")
-        header_cols[2].markdown("")
         for fh in file_hashes:
-            cols = st.columns([4, 6, 1])
-            cols[0].write(fh.filename)
-            cols[1].write(fh.hash)
-            with cols[2]:
-                with st.form(key=f"delete_{fh.hash}"):
-                    delete = st.form_submit_button("🗑️", use_container_width=True)
-                    if delete:
-                        db.delete(fh)
-                        db.commit()
-                        st.success(f"Deleted {fh.hash}")
-                        st.rerun()
+            with st.container():
+                cols = st.columns([4, 6, 1])
+
+                # Filename
+                cols[0].markdown(f"📄 **{fh.filename}**")
+
+                # Hash code display
+                cols[1].code(fh.hash, language="text")
+
+                # Delete button
+                delete_btn = cols[2].button("🗑️", key=f"delete_{fh.hash}", use_container_width=True)
+                if delete_btn:
+                    db.delete(fh)
+                    db.commit()
+                    st.success(f"Deleted `{fh.filename}`")
+                    st.rerun()
     else:
         st.info("No files found in the database.")
 finally:
