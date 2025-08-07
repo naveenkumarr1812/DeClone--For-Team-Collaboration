@@ -7,7 +7,7 @@ API_URL = "http://localhost:8000/upload"
 
 # Page configuration
 st.set_page_config(page_title="🔐DupliDrop")
-st.title("🔐DupliDrop")
+st.title("🔐DupliDrop - For Team Collaboration")
 st.write("This app checks if the uploaded files are duplicates using SHA-256 content hashing.")
 
 # File uploader widget
