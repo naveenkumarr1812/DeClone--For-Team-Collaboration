@@ -27,7 +27,7 @@ DeClone--For-Team-Collaboration/
 ### 1. Clone the Repository
 ```bash
 git clone <repo-url>
-cd "DupliDrop - For Team Collaboration"
+cd "DeClone--For-Team-Collaboration"
 ```
 
 ### 2. Install Dependencies
