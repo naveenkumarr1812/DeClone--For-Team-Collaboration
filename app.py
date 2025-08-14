@@ -6,8 +6,8 @@ from db import SessionLocal, FileHash
 API_URL = "https://duplidrop.onrender.com/upload"
 
 # Page configuration
-st.set_page_config(page_title="🔐DupliDrop")
-st.title("🔐DupliDrop - For Team Collaboration")
+st.set_page_config(page_title="🛡️DupliDrop")
+st.title("🛡️DupliDrop - For Team Collaboration")
 st.write("This app checks if the uploaded files are duplicates using SHA-256 content hashing.")
 
 # File uploader widget
