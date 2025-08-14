@@ -3,7 +3,7 @@ import requests
 from db import SessionLocal, FileHash
 
 # Backend API endpoint
-API_URL = "http://localhost:8000/upload"
+API_URL = "https://duplidrop.onrender.com/upload"
 
 # Page configuration
 st.set_page_config(page_title="🔐DupliDrop")
